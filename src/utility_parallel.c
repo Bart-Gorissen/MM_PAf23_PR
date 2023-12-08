@@ -39,14 +39,6 @@ PARInfo setup_parinfo(long N) {
         }
     }
 
-    
-
-    // PI.b_local = PI.b;
-    // PI.b_last = N - (PI.b * (PI.P - 1));
-    // if (PI.s == PI.P - 1) {
-    //     PI.b_local = PI.b_last;
-    // }
-
     return PI;
 }
 
@@ -145,6 +137,22 @@ double parallel_scale1(double* local_vec, double* par_vec, PARInfo PI) {
 }
 
 /**
+ * Generates (stochastic) e_i vector
+ * Return: e_i
+*/
+double* parallel_generate_ei(long i, PARInfo PI) {
+    double* result = calloc(PI.b_local, sizeof(double));
+    if (PI.b_local == 0) {
+        return result;
+    }
+    long i_local = i - PI.s * PI.b;
+    if (0 <= i_local && i_local < PI.b_local) {
+        result[i] = 1;
+    }
+    return result;
+}
+
+/**
  * Big-pull version of column sum of graph
  * Return: colsum for PI.s of graph
 */
@@ -218,6 +226,53 @@ void parallel_pGy_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
         y_vec[i] = 0;
         for (long j=0; j<graph.rowsize[i]; j++) {
             y_vec[i] += global_fetch[graph.colindex[start + j]];
+        }
+
+        y_vec[i] *= p;
+        start += graph.rowsize[i];
+    }
+
+    free(global_fetch);
+}
+
+/**
+ * G_get version of y = p G_s . x
+ * Return: void
+*/
+void parallel_pGy_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
+    double* global_fetch = (double*) malloc(graph.nr_entries * sizeof(double));
+
+    // x_i is on proc t with elts t * b <= i < t * b_t_local
+    // t = i / b
+    // local index: i - t*b
+
+    long start = 0;
+
+    for (long i=0; i<PI.b_local; i++) {
+        for (long j=0; j<graph.rowsize[i]; j++) {
+            long k = graph.colindex[start + j];
+            long t = k / PI.b;
+            long k_local = k % PI.b;
+
+            bsp_get(t,
+                    x_par,
+                    k_local * sizeof(double),
+                    &global_fetch[start + j],
+                    sizeof(double)
+            );
+        }
+
+        start += graph.rowsize[i];
+    }
+
+    bsp_sync();
+
+    start = 0;
+
+    for (long i=0; i<PI.b_local; i++) {
+        y_vec[i] = 0;
+        for (long j=0; j<graph.rowsize[i]; j++) {
+            y_vec[i] += global_fetch[start + j];
         }
 
         y_vec[i] *= p;

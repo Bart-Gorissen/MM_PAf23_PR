@@ -297,7 +297,7 @@ int pagerank_par_test1(long N, long L, double p, double eps, int V) {
     PARInfo PI = pagerank_par_init(N, 0);
     CRSGraph graph = CRSGraph_generate(N, N, L);
 
-    double* u_sln = pagerank_par_naive(graph, p, eps, PI, 0, 2);
+    double* u_sln = pagerank_par_naive(graph, p, eps, PI, 0, V);
     double u_len = 0;
     double u_len_post = 0;
     long nr_negative = 0;
@@ -336,6 +336,58 @@ int pagerank_par_test1(long N, long L, double p, double eps, int V) {
 
     if (V > 0) {
         printf("Completed Pagerank (parallel naive) test 1\n--------\n");
+    }
+
+    return 1;
+}
+
+/**
+ * Tests pagerank_par_gget function.
+*/
+int pagerank_par_test2(long N, long L, double p, double eps, int V) {
+
+    PARInfo PI = pagerank_par_init(N, 0);
+    CRSGraph graph = CRSGraph_generate(N, N, L);
+
+    double* u_sln = pagerank_par_gget(graph, p, eps, PI, 0, V);
+    double u_len = 0;
+    double u_len_post = 0;
+    long nr_negative = 0;
+
+    for (long i=0; i<PI.b_local; i++) {
+        u_len += u_sln[i];
+        if (u_sln[i] < 0) {
+            nr_negative ++;
+        }
+    }
+    for (long i=0; i<PI.b_local; i++) {
+        u_len_post += u_sln[i] / u_len;
+    }
+
+    if (V > 5) {
+        printf("[ ");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%.3f ", u_sln[i]);
+        }
+        printf("] Pagerank Solution\n");
+        
+        printf("[ ");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%.3f ", u_sln[i] / u_len);
+        }
+        printf("] Pagerank Solution (Scaled)\n");
+    }
+    if (V > 3) {
+        printf("Length after scaling: %.3f\n", u_len_post);
+        printf("Negative values: %ld\n", nr_negative);
+    }
+
+    free(graph.rowsize);
+    free(graph.colindex);
+    free(u_sln);
+
+    if (V > 0) {
+        printf("Completed Pagerank (parallel gget) test 2\n--------\n");
     }
 
     return 1;

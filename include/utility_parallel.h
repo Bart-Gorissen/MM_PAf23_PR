@@ -59,6 +59,12 @@ double parallel_norm(double* local_vec, double* par_vec, PARInfo PI);
 double parallel_scale1(double* local_vec, double* par_vec, PARInfo PI);
 
 /**
+ * Generates (stochastic) e_i vector
+ * Return: e_i
+*/
+double* parallel_generate_ei(long i, PARInfo PI);
+
+/**
  * Big-pull version of column sum of graph
  * Return: colsum for PI.s of graph
 */
@@ -69,5 +75,11 @@ long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI);
  * Return: void
 */
 void parallel_pGy_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
+
+/**
+ * G_get version of y = p G_s . x
+ * Return: void
+*/
+void parallel_pGy_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
 
 #endif /* UTILITY_PARALLEL_H */

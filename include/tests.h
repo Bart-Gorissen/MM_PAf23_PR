@@ -50,4 +50,9 @@ int pagerank_seq_test3(long N, long L, double p, double eps, int V);
 */
 int pagerank_par_test1(long N, long L, double p, double eps, int V);
 
+/**
+ * Tests pagerank_par_gget function.
+*/
+int pagerank_par_test2(long N, long L, double p, double eps, int V);
+
 #endif /* TESTS_H */

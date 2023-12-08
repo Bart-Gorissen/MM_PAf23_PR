@@ -381,3 +381,13 @@ double* inverse(long* D, long N) {
 
     return result;
 }
+
+/**
+ * Generates (stochastic) e_i vector
+ * Return: e_i
+*/
+double* generate_ei(long i, long N) {
+    double* result = calloc(N, sizeof(double));
+    result[i] = 1;
+    return result;
+}

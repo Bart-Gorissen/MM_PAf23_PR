@@ -84,4 +84,10 @@ double norm(double* u_vec, long N);
 */
 double* inverse(long* D, long N);
 
+/**
+ * Generates (stochastic) e_i vector
+ * Return: e_i
+*/
+double* generate_ei(long i, long N);
+
 #endif /* UTILITY_H */
