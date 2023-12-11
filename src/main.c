@@ -12,9 +12,10 @@ int seq_tests() {
     random_test(PRMS.N, PRMS.N * PRMS.N, PRMS.V);
     graph_seq_test(PRMS.N, PRMS.L, PRMS.p, PRMS.V);
     graph_sort_seq_test(PRMS.N, PRMS.L, PRMS.V);
-    pagerank_seq_test1(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
-    pagerank_seq_test2(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
-    pagerank_seq_test3(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
+    pagerank_seq_test1(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, 3);
+    pagerank_seq_test2(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, 3);
+    pagerank_seq_test3(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, 3);
+    pagerank_seq_test4(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, 3);
 
     exit(EXIT_SUCCESS);
 }
@@ -39,9 +40,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    //seq_tests();
+    seq_tests();
 
-    par_test_outer();
+    //par_test_outer();
 
     exit(EXIT_SUCCESS);
 }

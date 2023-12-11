@@ -46,6 +46,11 @@ int pagerank_seq_test2(long N, long L, double p, double eps, int V);
 int pagerank_seq_test3(long N, long L, double p, double eps, int V);
 
 /**
+ * Compares iterations between fast and full residual computation
+*/
+int pagerank_seq_test4(long N, long L, double p, double eps, int V);
+
+/**
  * Tests pagerank_par_naive function.
 */
 int pagerank_par_test1(long N, long L, double p, double eps, int V);

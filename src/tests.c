@@ -229,7 +229,6 @@ int pagerank_seq_test1(long N, long L, double p, double eps, int V) {
     return 1;
 }
 
-
 /**
  * Compares running time and number of iterations between sorted and unsorted CRS
 */
@@ -287,7 +286,33 @@ int pagerank_seq_test3(long N, long L, double p, double eps, int V) {
     return 1;
 }
 
+/**
+ * Compares iterations between fast and full residual computation
+*/
+int pagerank_seq_test4(long N, long L, double p, double eps, int V) {
 
+    init_randomness(0);
+
+    CRSGraph graph = CRSGraph_generate(N, N, L);
+    clock_t start = clock();
+    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, V);
+    printf("Fast residual took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
+
+    start = clock();
+    double* u_sln_post = pagerank_seq_fullres(graph, p, eps, 0, V);
+    printf("Full residual took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
+    
+    free(graph.rowsize);
+    free(graph.colindex);
+    free(u_sln_pre);
+    free(u_sln_post);
+
+    if (V > 0) {
+        printf("Completed Pagerank (sequential) test 4\n--------\n");
+    }
+
+    return 1;
+}
 
 /**
  * Tests pagerank_par_naive function.
