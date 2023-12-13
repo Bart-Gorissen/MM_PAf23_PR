@@ -65,21 +65,35 @@ double parallel_scale1(double* local_vec, double* par_vec, PARInfo PI);
 double* parallel_generate_ei(long i, PARInfo PI);
 
 /**
- * Big-pull version of column sum of graph
- * Return: colsum for PI.s of graph
+ * Column sum of graph using method D_comm_choice
+ * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
+ * Return: colsum of PI.s part of graph
 */
-long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI);
+long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choice);
+
+/**
+ * Big-pull version of column sum of graph
+ * Return: colsum for PI.s part of graph
+*/
+long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par);
+
+/**
+ * Computes y = pGx using method pGx_comm_choice
+ * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * Return: void
+*/
+void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice);
 
 /**
  * Big-pull version of y = p G_s . x
  * Return: void
 */
-void parallel_pGy_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
+void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
 
 /**
  * G_get version of y = p G_s . x
  * Return: void
 */
-void parallel_pGy_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
+void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
 
 #endif /* UTILITY_PARALLEL_H */

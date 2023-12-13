@@ -47,6 +47,13 @@ void CRSGraph_sort(CRSGraph graph);
 long* CRSGraph_colsum(CRSGraph graph);
 
 /**
+ * Computes the column sum of the local adjacency matrix
+ * NOTE: assumes colsum contains N zeros
+ * Return: void
+*/
+void CRSGraph_colsum_inplace(CRSGraph graph, long* colsum);
+
+/**
  * Compute stochstic-making diagonal
  * Return: column sum vector with 0 entries changed to 1 entries
 */

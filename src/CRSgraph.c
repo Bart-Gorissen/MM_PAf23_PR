@@ -93,7 +93,17 @@ void CRSGraph_sort(CRSGraph graph) {
 */
 long* CRSGraph_colsum(CRSGraph graph) {
     long* colsum = (long*) calloc(graph.N, sizeof(long));
+    CRSGraph_colsum_inplace(graph, colsum);
 
+    return colsum;
+}
+
+/**
+ * Computes the column sum of the local adjacency matrix
+ * NOTE: assumes colsum contains N zeros
+ * Return: void
+*/
+void CRSGraph_colsum_inplace(CRSGraph graph, long* colsum) {
     long start = 0;
 
     // add number of references to each column
@@ -103,8 +113,6 @@ long* CRSGraph_colsum(CRSGraph graph) {
         }
         start += graph.rowsize[i];
     }
-
-    return colsum;
 }
 
 /**

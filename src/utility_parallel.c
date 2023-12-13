@@ -153,24 +153,51 @@ double* parallel_generate_ei(long i, PARInfo PI) {
 }
 
 /**
+ * Column sum of graph using method D_comm_choice
+ * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
+ * Return: colsum of PI.s part of graph
+*/
+long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choice) {
+    long* colsum;
+
+    switch (D_comm_choice) {
+        case 0:
+            colsum = parallel_colsum_bigpull(graph, PI, vec_par);
+            break;
+        
+        case 1:
+            // TODO
+            colsum = parallel_colsum_bigpull(graph, PI, vec_par);
+            break;
+
+        case 2:
+            // TODO
+            colsum = parallel_colsum_bigpull(graph, PI, vec_par);
+            break;
+        
+        default:
+            colsum = NULL;
+            break;
+    }
+
+    return colsum;
+}
+
+/**
  * Big-pull version of column sum of graph
+ * NOTE: assumes vec_par has contains N zeros
  * Return: colsum for PI.s of graph
 */
-long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI) {
-    long* local_vec = CRSGraph_colsum(graph);
+long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par) {
+    CRSGraph_colsum_inplace(graph, vec_par);
     long* global_fetch = (long*) malloc(PI.b_local * PI.P * sizeof(long));
-
-    bsp_push_reg(local_vec, graph.N * sizeof(long));
-    bsp_sync();
 
     long start_target = PI.s * PI.b * sizeof(long);
     long start_local = 0;
 
-    //printf("Proc %d, %ld, %ld, %ld\n", PI.s, PI.b_local, PI.b, PI.P); fflush(stdout);
-
     for (bsp_pid_t t=0; t<PI.p_last; t++) {
         bsp_get(t,
-                local_vec,
+                vec_par,
                 start_target,
                 &global_fetch[start_local],
                 PI.b_local * sizeof(long)
@@ -192,18 +219,46 @@ long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI) {
         start_local += PI.b_local;
     }
 
-    bsp_pop_reg(local_vec);
-    free(local_vec);
     free(global_fetch);
 
     return colsum;
 }
 
 /**
+ * Computes y = pGx using method pGx_comm_choice
+ * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * Return: void
+*/
+void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice) {
+    switch (pGx_comm_choice) {
+        case 0:
+            parallel_pGx_bigpull(graph, p, x_par, y_vec, PI);
+            break;
+        
+        case 1:
+            // TODO (placeholder)
+            parallel_pGx_bigpull(graph, p, x_par, y_vec, PI);
+            break;
+        
+        case 2:
+            parallel_pGx_gget(graph, p, x_par, y_vec, PI);
+            break;
+
+        case 3:
+            // TODO (placeholder)
+            parallel_pGx_gget(graph, p, x_par, y_vec, PI);
+            break;
+        
+        default:
+            break;
+    }
+}
+
+/**
  * Big-pull version of y = p G_s . x
  * Return: void
 */
-void parallel_pGy_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
+void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
     double* global_fetch = (double*) malloc(graph.N * sizeof(double));
     long start_local = 0;
 
@@ -239,7 +294,7 @@ void parallel_pGy_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
  * G_get version of y = p G_s . x
  * Return: void
 */
-void parallel_pGy_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
+void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
     double* global_fetch = (double*) malloc(graph.nr_entries * sizeof(double));
 
     // x_i is on proc t with elts t * b <= i < t * b_t_local
