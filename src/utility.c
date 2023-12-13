@@ -156,7 +156,7 @@ int parse_input(PARAMS* PRMS, int argc, char **argv) {
         }
         break;
 
-    case 3:
+    case 3: // case
         FILE* file = fopen(input_file, "r");
         if (file == NULL) {
             printf("Invalid file name %s\n", input_file);
@@ -198,7 +198,7 @@ int parse_input(PARAMS* PRMS, int argc, char **argv) {
 
         break;
     
-    default:
+    default: //case
         printf("Error: invalid input type\n");
         printf("Usage: pagerank_seq <N> <L> <p> <P> <V>\n");
         return 0;
