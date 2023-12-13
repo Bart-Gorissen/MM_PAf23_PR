@@ -66,7 +66,7 @@ double* parallel_generate_ei(long i, PARInfo PI);
 
 /**
  * Column sum of graph using method D_comm_choice
- * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
+ * D_comm_choice {0,1,2,3}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue), (3 : message queue - aggregated)
  * Return: colsum of PI.s part of graph
 */
 long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choice);
@@ -98,7 +98,7 @@ long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI);
 
 /**
  * Computes y = pGx using method pGx_comm_choice
- * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: void
 */
 void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice);

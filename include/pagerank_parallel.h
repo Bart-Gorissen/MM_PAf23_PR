@@ -15,8 +15,8 @@ PARInfo pagerank_par_init(long N, long seed);
  * Parallel pagerank implementation
  * pre_invert_D {0,1}: pre-computing the inverse of D
  * u_choice {0,1,...,N}: (0 : random), (i : e_i)
- * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
- * pGy_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * D_comm_choice {0,1,2,3}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue), (3 : message queue - aggregated)
+ * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: local part of pagerank solution
 */
 double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_invert_D, int u_choice, int D_comm_choice, int pGy_comm_choice, int V);

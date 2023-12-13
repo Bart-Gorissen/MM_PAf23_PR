@@ -1,5 +1,6 @@
 #include <math.h>
 #include <bsp.h>
+#include <unistd.h>
 
 #include "utility_parallel.h"
 #include "CRSgraph.h"
@@ -150,7 +151,7 @@ double* parallel_generate_ei(long i, PARInfo PI) {
 
 /**
  * Column sum of graph using method D_comm_choice
- * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
+ * D_comm_choice {0,1,2,3}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue), (3 : message queue - aggregated)
  * Return: colsum of PI.s part of graph
 */
 long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choice) {
@@ -402,7 +403,7 @@ long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI) {
 
 /**
  * Computes y = pGx using method pGx_comm_choice
- * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: void
 */
 void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice) {
@@ -443,10 +444,10 @@ void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
                 x_par,
                 0,
                 &global_fetch[start_local],
-                (t == PI.p_last) ? PI.b_last * sizeof(long) : PI.b_local * sizeof(long)
+                (t == PI.p_last) ? PI.b_last * sizeof(long) : PI.b * sizeof(long)
         );
 
-        start_local += PI.b_local;
+        start_local += PI.b;
     }
 
     bsp_sync();
@@ -473,17 +474,17 @@ void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
 void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
     double* global_fetch = (double*) malloc(graph.nr_entries * sizeof(double));
 
-    // x_i is on proc t with elts t * b <= i < t * b_t_local
+    // x_i is on proc t with elts t * b <= i < (t+1) * b
     // t = i / b
-    // local index: i - t*b
+    // local index: i - t*b = i % b
 
     long start = 0;
 
     for (long i=0; i<PI.b_local; i++) {
         for (long j=0; j<graph.rowsize[i]; j++) {
-            long k = graph.colindex[start + j];
-            long t = k / PI.b;
-            long k_local = k % PI.b;
+            long k = graph.colindex[start + j]; // global column number
+            long t = k / PI.b;                  // its processor
+            long k_local = k % PI.b;            // its local entry (in vector x)
 
             bsp_get(t,
                     x_par,
@@ -500,6 +501,7 @@ void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, P
 
     start = 0;
 
+    // compute matrix-vector product
     for (long i=0; i<PI.b_local; i++) {
         y_vec[i] = 0;
         for (long j=0; j<graph.rowsize[i]; j++) {

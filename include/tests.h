@@ -65,4 +65,9 @@ int pagerank_par_test2(long N, long L, double p, double eps, int V);
 */
 int pagerank_par_test3(long N, long L, double p, double eps, int V);
 
+/**
+ * Tests different computations for pGx function.
+*/
+int pagerank_par_test4(long N, long L, double p, double eps, int V);
+
 #endif /* TESTS_H */

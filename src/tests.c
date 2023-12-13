@@ -185,7 +185,7 @@ int pagerank_seq_test1(long N, long L, double p, double eps, int V) {
 
     CRSGraph graph = CRSGraph_generate(N, N, L);
 
-    double* u_sln = pagerank_seq(graph, p, eps, 0, 0, 2);
+    double* u_sln = pagerank_seq(graph, p, eps, 0, 0, 0, V);
     double u_len = 0;
     double u_len_post = 0;
     long nr_negative = 0;
@@ -238,12 +238,12 @@ int pagerank_seq_test2(long N, long L, double p, double eps, int V) {
 
     CRSGraph graph = CRSGraph_generate(N, N, L);
     clock_t start = clock();
-    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, V);
+    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, 0, V);
     printf("Unsorted took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
 
     CRSGraph_sort(graph);
     start = clock();
-    double* u_sln_post = pagerank_seq(graph, p, eps, 0, 0, V);
+    double* u_sln_post = pagerank_seq(graph, p, eps, 0, 0, 0, V);
     printf("Sorted took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
     
     free(graph.rowsize);
@@ -267,11 +267,11 @@ int pagerank_seq_test3(long N, long L, double p, double eps, int V) {
 
     CRSGraph graph = CRSGraph_generate(N, N, L);
     clock_t start = clock();
-    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, V);
+    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, 0, V);
     printf("Standard D took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
 
     start = clock();
-    double* u_sln_post = pagerank_seq(graph, p, eps, 1, 0, V);
+    double* u_sln_post = pagerank_seq(graph, p, eps, 1, 0, 0, V);
     printf("Inverted D took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
     
     free(graph.rowsize);
@@ -295,11 +295,11 @@ int pagerank_seq_test4(long N, long L, double p, double eps, int V) {
 
     CRSGraph graph = CRSGraph_generate(N, N, L);
     clock_t start = clock();
-    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, V);
+    double* u_sln_pre = pagerank_seq(graph, p, eps, 0, 0, 0, V);
     printf("Fast residual took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
 
     start = clock();
-    double* u_sln_post = pagerank_seq(graph, p, eps, 0, 1, V);
+    double* u_sln_post = pagerank_seq(graph, p, eps, 0, 1, 0, V);
     printf("Full residual took time %f\n", ((double) clock()-start)/CLOCKS_PER_SEC);
     
     free(graph.rowsize);
@@ -441,6 +441,48 @@ int pagerank_par_test3(long N, long L, double p, double eps, int V) {
 
     if (V > 0) {
         printf("Completed Pagerank (D computation) test 3\n--------\n");
+    }
+
+    return 1;
+}
+
+/**
+ * Tests different computations for pGx function.
+*/
+int pagerank_par_test4(long N, long L, double p, double eps, int V) {
+
+    PARInfo PI = pagerank_par_init(N, 0);
+    CRSGraph graph = CRSGraph_generate(N, PI.b_local, L);
+
+    double* u_sln;
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 0, V);
+    // if (PI.s == 2) {
+    //     printf("bigpull=[");
+    //     for (long i=0; i<PI.b_local; i++) {
+    //         printf("%lf ", u_sln[i]);
+    //     }
+    //     printf("]\n");
+    // }
+    free(u_sln);
+    // u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 1, V);
+    // free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 2, V);
+    // if (PI.s == 2) {
+    //     printf("gget=[");
+    //     for (long i=0; i<PI.b_local; i++) {
+    //         printf("%lf ", u_sln[i]);
+    //     }
+    //     printf("]\n");
+    // }
+    free(u_sln);
+    // u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 3, V);
+    // free(u_sln);
+
+    free(graph.rowsize);
+    free(graph.colindex);
+
+    if (V > 0) {
+        printf("Completed Pagerank (pGx computation) test 4\n--------\n");
     }
 
     return 1;

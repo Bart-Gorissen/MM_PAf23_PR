@@ -17,16 +17,22 @@ PARInfo pagerank_par_init(long N, long seed) {
  * Parallel pagerank implementation
  * pre_invert_D {0,1}: pre-computing the inverse of D
  * u_choice {0,1,...,N}: (0 : random), (i : e_i)
- * D_comm_choice {0,1,2}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue)
- * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
+ * D_comm_choice {0,1,2,3}: (0 : full-broadcast), (1 : P-round broadcast), (2 : message queue), (3 : message queue - aggregated)
+ * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: local part of pagerank solution
 */
 double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_invert_D, int u_choice, int D_comm_choice, int pGx_comm_choice, int V) {
+
+    double time_PR_total = bsp_time();
+    double time_D_comm;
+    double time_pGDx_comm;
+
     // setup communication vectors (whether these are used depends on the parameters)
     double* p_vec_par = (double*) malloc(PI.P * sizeof(double)); // vector for BSP use with P entries
     double* r_vec_par = (double*) malloc(PI.b_local * sizeof(double)); // vector for BSP use with b_local entries
     long* D_vec_par;
     bsp_size_t tagsize;
+
     switch(D_comm_choice) {
         case 0:
             D_vec_par = (long*) calloc(graph.N, sizeof(long));
@@ -85,6 +91,7 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     }
 
     // compute the matrix D
+    time_D_comm = bsp_time();
     long* D_diag = parallel_colsum(graph, PI, D_vec_par, D_comm_choice);    
 
     change_01(D_diag, PI.b_local); // change 0 entries to 1 entries
@@ -94,6 +101,8 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     if (pre_invert_D != 1) {
         D_diag_inv = inverse(D_diag, PI.b_local);
     }
+    time_D_comm = bsp_time() - time_D_comm;
+    time_pGDx_comm = bsp_time();
 
     // compute initial residual r = e - (I-pGD^{-1})u = e - u + pGD^{-1} u    
     // first scale all u entries w.r.t D (r = D^{-1} u)
@@ -110,6 +119,8 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     
     // compute r = p G_s (D^{-1} u) [global operation]
     parallel_pGx(graph, p, r_vec_par, r_vec_par, PI, pGx_comm_choice);
+
+    time_pGDx_comm = bsp_time() - time_pGDx_comm;
 
     // compute r = e - u + (pG_s (D^{-1} u))
     for (long i=0; i<PI.b_local; i++) {
@@ -159,6 +170,17 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     free(D_vec_par);
     free(D_diag);
     free(D_diag_inv);
+
+    time_PR_total = bsp_time() - time_PR_total;
+
+    // write output to file
+    if (V == -8 && PI.s == 0) {
+        char filename[42];
+        sprintf(filename, "out/output_%ld_%u.out", graph.N, PI.P);
+        FILE* file = fopen(filename, "a+");
+        fprintf(file, "%ld, %lf, %lf, %lf\n", iters, time_D_comm, time_pGDx_comm, time_PR_total);
+        fclose(file);
+    }
 
     return u_vec;
 }

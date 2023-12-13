@@ -3,6 +3,7 @@
         "functional": "c",
         "stdlib.h": "c",
         "crsgraph.h": "c",
-        "utility_parallel.h": "c"
+        "utility_parallel.h": "c",
+        "time.h": "c"
     }
 }
