@@ -320,7 +320,7 @@ int pagerank_seq_test4(long N, long L, double p, double eps, int V) {
 int pagerank_par_test1(long N, long L, double p, double eps, int V) {
 
     PARInfo PI = pagerank_par_init(N, 0);
-    CRSGraph graph = CRSGraph_generate(N, N, L);
+    CRSGraph graph = CRSGraph_generate(N, PI.b_local, L);
 
     double* u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 0, 0, V);
     double u_len = 0;
@@ -372,7 +372,7 @@ int pagerank_par_test1(long N, long L, double p, double eps, int V) {
 int pagerank_par_test2(long N, long L, double p, double eps, int V) {
 
     PARInfo PI = pagerank_par_init(N, 0);
-    CRSGraph graph = CRSGraph_generate(N, N, L);
+    CRSGraph graph = CRSGraph_generate(N, PI.b_local, L);
 
     double* u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 0, 2, V);
     double u_len = 0;
@@ -413,6 +413,34 @@ int pagerank_par_test2(long N, long L, double p, double eps, int V) {
 
     if (V > 0) {
         printf("Completed Pagerank (parallel gget) test 2\n--------\n");
+    }
+
+    return 1;
+}
+
+/**
+ * Tests different computations for D function.
+*/
+int pagerank_par_test3(long N, long L, double p, double eps, int V) {
+
+    PARInfo PI = pagerank_par_init(N, 0);
+    CRSGraph graph = CRSGraph_generate(N, PI.b_local, L);
+
+    double* u_sln;
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 0, 0, V);
+    free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 1, 0, V);
+    free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 0, V);
+    free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 3, 0, V);
+    free(u_sln);
+
+    free(graph.rowsize);
+    free(graph.colindex);
+
+    if (V > 0) {
+        printf("Completed Pagerank (D computation) test 3\n--------\n");
     }
 
     return 1;

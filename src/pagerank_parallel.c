@@ -26,6 +26,7 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     double* p_vec_par = (double*) malloc(PI.P * sizeof(double)); // vector for BSP use with P entries
     double* r_vec_par = (double*) malloc(PI.b_local * sizeof(double)); // vector for BSP use with b_local entries
     long* D_vec_par;
+    bsp_size_t tagsize;
     switch(D_comm_choice) {
         case 0:
             D_vec_par = (long*) calloc(graph.N, sizeof(long));
@@ -33,13 +34,22 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
             break;
 
         case 1:
-            D_vec_par = (long*) malloc(PI.b_local * sizeof(long));
-            bsp_push_reg(D_vec_par, PI.b_local * sizeof(long));
+            D_vec_par = (long*) calloc(PI.b, sizeof(long));
+            bsp_push_reg(D_vec_par, PI.b * sizeof(long));
             break;
         
         case 2:
-            D_vec_par = NULL;
+            D_vec_par = (long*) malloc(0 * sizeof(long));
             bsp_push_reg(D_vec_par, 0 * sizeof(long));
+            tagsize = 0;
+            bsp_set_tagsize(&tagsize);
+            break;
+
+        case 3:
+            D_vec_par = (long*) malloc(0 * sizeof(long));
+            bsp_push_reg(D_vec_par, 0 * sizeof(long));
+            tagsize = sizeof(long);
+            bsp_set_tagsize(&tagsize);
             break;
         
         default:
@@ -75,7 +85,8 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     }
 
     // compute the matrix D
-    long* D_diag = parallel_colsum(graph, PI, D_vec_par, D_comm_choice);
+    long* D_diag = parallel_colsum(graph, PI, D_vec_par, D_comm_choice);    
+
     change_01(D_diag, PI.b_local); // change 0 entries to 1 entries
     double* D_diag_inv = NULL;
 

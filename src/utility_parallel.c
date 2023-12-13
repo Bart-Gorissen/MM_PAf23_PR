@@ -14,20 +14,16 @@ PARInfo setup_parinfo(long N) {
     PI.s = bsp_pid();
     PI.P = bsp_nprocs();
 
-    // compute block size ceil( N / P )
-    PI.b = N / PI.P;
-    if (N % PI.P > 0) {
-        PI.b ++;
-    }
-
-    if (N == 0) {
-        PI.p_last = 0;
-        PI.b_last = 0;
-        PI.b_local = 0;
+    if (N % PI.P == 0) {
+        PI.b = N / PI.P;
+        PI.p_last = PI.P-1;
+        PI.b_local = PI.b;
+        PI.b_last = PI.b;
     }
     else {
-        PI.p_last = N / PI.b; // number of full processors
-        PI.b_last = N % PI.b; // elements to be put on first processor after full
+        PI.b = (N / PI.P) + 1;
+        PI.p_last = N / PI.b;
+        PI.b_last = N % PI.b;
         if (PI.s < PI.p_last) {
             PI.b_local = PI.b;
         }
@@ -166,15 +162,17 @@ long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choi
             break;
         
         case 1:
-            // TODO
-            colsum = parallel_colsum_bigpull(graph, PI, vec_par);
+            colsum = parallel_colsum_prounds(graph, PI, vec_par);
             break;
 
         case 2:
-            // TODO
-            colsum = parallel_colsum_bigpull(graph, PI, vec_par);
+            colsum = parallel_colsum_blindsend(graph, PI);
             break;
-        
+
+        case 3:
+            colsum = parallel_colsum_aggrsend(graph, PI);
+            break;
+
         default:
             colsum = NULL;
             break;
@@ -185,17 +183,17 @@ long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choi
 
 /**
  * Big-pull version of column sum of graph
- * NOTE: assumes vec_par has contains N zeros
+ * NOTE: assumes vec_par contains N zeros
  * Return: colsum for PI.s of graph
 */
 long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par) {
     CRSGraph_colsum_inplace(graph, vec_par);
-    long* global_fetch = (long*) malloc(PI.b_local * PI.P * sizeof(long));
+    long* global_fetch = (long*) malloc(PI.b_local * (PI.p_last+1) * sizeof(long));
 
     long start_target = PI.s * PI.b * sizeof(long);
     long start_local = 0;
 
-    for (bsp_pid_t t=0; t<PI.p_last; t++) {
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
         bsp_get(t,
                 vec_par,
                 start_target,
@@ -211,7 +209,7 @@ long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par) {
     long* colsum = (long*) calloc(PI.b_local, sizeof(long));
     start_local = 0;
 
-    for (bsp_pid_t t=0; t<PI.p_last; t++) {
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
         for (long i=0; i<PI.b_local; i++) {
             colsum[i] += global_fetch[start_local + i];
         }
@@ -220,6 +218,184 @@ long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par) {
     }
 
     free(global_fetch);
+
+    return colsum;
+}
+
+/**
+ * P-Round versoin of column sum of graph
+ * NOTE: Assumes vec_par conts PI.b zeros
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_prounds(CRSGraph graph, PARInfo PI, long* vec_par) {
+    long* colsum = (long*) calloc(PI.b_local, sizeof(long));
+    long* global_fetch = (long*) malloc(PI.b_local * sizeof(long));
+
+    // method assumes sorted graph
+    CRSGraph_sort(graph);
+
+    long* start_indices = CRSGraph_indexlist(graph);
+    long* curr_indices = (long*) malloc(PI.b_local * sizeof(long));
+
+    // copy starting indices and forward to start current processor
+    for (long i=0; i<PI.b_local; i++) {
+        curr_indices[i] = start_indices[i];
+
+        // forward
+        while(graph.colindex[curr_indices[i]] / PI.b < PI.s && curr_indices[i] < start_indices[i+1]) {
+            curr_indices[i] ++;
+        }
+        vec_par[i] = 0;
+    }
+    for (long i=PI.b_local; i<PI.b; i++) {
+        vec_par[i] = 0;
+    }
+
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
+        
+        bsp_pid_t target = (PI.s + t) % (PI.p_last + 1);
+        bsp_pid_t source = (PI.s + (PI.p_last + 1) - t) % (PI.p_last + 1);
+
+        // wrap around when applicable (not needed for processor 0)
+        if (target == 0 && PI.s != 0) {
+            for (long i=0; i<PI.b_local; i++) {
+                curr_indices[i] = start_indices[i];
+            }
+        }
+
+        for (long i=0; i<PI.b_local; i++) {
+            // while the next column is on the target processor, increment the appropriate entry
+            while (graph.colindex[curr_indices[i]] / PI.b <= target && curr_indices[i] < start_indices[i+1]) {
+                vec_par[graph.colindex[curr_indices[i]] % PI.b] ++;
+                curr_indices[i] ++;
+            }
+        }
+
+        // get the sum ()
+        bsp_get(source,
+                vec_par,
+                0,
+                global_fetch,
+                PI.b_local * sizeof(long)
+        );
+
+        bsp_sync();
+
+        // increment the sum and set the (running) columns sum to 0
+        for (long i=0; i<PI.b_local; i++) {
+            colsum[i] += global_fetch[i];
+            vec_par[i] = 0;
+        }
+        for (long i=PI.b_local; i<PI.b; i++) {
+            vec_par[i] = 0;
+        }
+    }
+
+    free(global_fetch);
+    free(start_indices);
+    free(curr_indices);
+
+    return colsum;
+}
+
+/**
+ * Blind-send version of column sum of graph
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_blindsend(CRSGraph graph, PARInfo PI) {
+    long* colsum = (long*) calloc(PI.b_local, sizeof(long));
+
+    long start = 0;
+
+    // send all columns indices to their responsible processors
+    for (long i=0; i<PI.b_local; i++) {
+        for (long j=0; j<graph.rowsize[i]; j++) {
+            bsp_send(graph.colindex[start + j] / PI.b,
+                     NULL,
+                     &graph.colindex[start + j],
+                     sizeof(long)
+            );
+        }
+
+        start += graph.rowsize[i];
+    }
+
+    bsp_sync();
+
+    // determine number of messages received
+    int nr_msgs;
+    bsp_qsize(&nr_msgs, NULL);
+
+    // for each message, increment the column
+    for (long m=0; m<nr_msgs; m++) {
+        long col_global;
+        bsp_move(&col_global, sizeof(long));
+        colsum[col_global % PI.b] ++;
+    }
+
+    return colsum;
+}
+
+/**
+ * Aggregated-send version of column sum of graph
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI) {
+    long* colsum = (long*) calloc(PI.b_local, sizeof(long));
+
+    // method assumes sorted graph
+    CRSGraph_sort(graph);
+
+    long* start_indices = CRSGraph_indexlist(graph);
+    long* curr_indices = (long*) calloc(PI.b, sizeof(long));
+    long* curr_colsum = (long*) calloc(PI.b, sizeof(long));
+
+    // copy starting indices
+    for (long i=0; i<PI.b_local; i++) {
+        curr_indices[i] = start_indices[i];
+    }
+
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
+        for (long i=0; i<PI.b_local; i++) {
+            while (graph.colindex[curr_indices[i]] / PI.b <= t && curr_indices[i] < start_indices[i+1]) {
+                curr_colsum[graph.colindex[curr_indices[i]] % PI.b] ++;
+                curr_indices[i] ++;
+            }
+        }
+
+        // send all non-zero entries columns
+        for (long i=0; i<PI.b; i++) {
+            if (curr_colsum[i] > 0) {
+                bsp_send(t,
+                         &i,
+                         &curr_colsum[i],
+                         sizeof(long)
+                );
+            }
+
+            curr_colsum[i] = 0;
+        }
+    }
+
+    bsp_sync();
+
+    // determine number of messages received
+    int nr_msgs;
+    bsp_qsize(&nr_msgs, NULL);
+
+    // for each message, increment the column
+    for (long m=0; m<nr_msgs; m++) {
+        bsp_size_t status;
+        long col_local;
+        long col_value;
+        bsp_get_tag(&status, &col_local);
+        bsp_move(&col_value, sizeof(long));
+        colsum[col_local] += col_value;
+    }
+    
+    free(start_indices);
+    free(curr_indices);
+    free(curr_colsum);
 
     return colsum;
 }
@@ -262,7 +438,7 @@ void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
     double* global_fetch = (double*) malloc(graph.N * sizeof(double));
     long start_local = 0;
 
-    for (bsp_pid_t t=0; t<PI.p_last; t++) {
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
         bsp_get(t,
                 x_par,
                 0,

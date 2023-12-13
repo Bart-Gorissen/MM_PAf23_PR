@@ -21,8 +21,9 @@ int seq_tests() {
 void par_test_outer() {
     bsp_begin(PRMS.P);
 
-    pagerank_par_test1(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
-    pagerank_par_test2(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
+    //pagerank_par_test1(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
+    //pagerank_par_test2(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
+    pagerank_par_test3(PRMS.N, PRMS.L, PRMS.p, PRMS.eps, PRMS.V);
 
     bsp_end();
 }
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    seq_tests();
+    //seq_tests();
 
     par_test_outer();
 

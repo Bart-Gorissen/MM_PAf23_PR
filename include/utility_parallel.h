@@ -78,6 +78,25 @@ long* parallel_colsum(CRSGraph graph, PARInfo PI, long* vec_par, int D_comm_choi
 long* parallel_colsum_bigpull(CRSGraph graph, PARInfo PI, long* vec_par);
 
 /**
+ * P-Round version of column sum of graph
+ * NOTE: Assumes vec_par has PI.b entries
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_prounds(CRSGraph graph, PARInfo PI, long* vec_par);
+
+/**
+ * Blind-send version of column sum of graph
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_blindsend(CRSGraph graph, PARInfo PI);
+
+/**
+ * Aggregated-send version of column sum of graph
+ * Return: colsum for PI.s of graph
+*/
+long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI);
+
+/**
  * Computes y = pGx using method pGx_comm_choice
  * pGx_comm_choice {0,1,2}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: void

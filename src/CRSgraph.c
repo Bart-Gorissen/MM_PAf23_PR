@@ -106,6 +106,10 @@ long* CRSGraph_colsum(CRSGraph graph) {
 void CRSGraph_colsum_inplace(CRSGraph graph, long* colsum) {
     long start = 0;
 
+    for (long i=0; i<graph.N; i++) {
+        colsum[i] = 0;
+    }
+
     // add number of references to each column
     for (long i=0; i<graph.M; i++) {
         for (long j=0; j<graph.rowsize[i]; j++) {
@@ -124,4 +128,21 @@ long* CRSGraph_stochastic_diagonal(CRSGraph graph) {
     change_01(diagonal, graph.N);
 
     return diagonal;
+}
+
+/**
+ * Computes the start indices of each row in the colindex array (including one entry for the number of entries)
+ * Return: index list
+*/
+long* CRSGraph_indexlist(CRSGraph graph) {
+    long* indices = (long*) calloc(graph.M+1, sizeof(long));
+
+    // set indices to first entry of each row
+    for (long i=0; i<graph.M; i++) {
+        for (long j=i+1; j<=graph.M; j++) {
+            indices[j] += graph.rowsize[i];
+        }
+    }
+
+    return indices;
 }

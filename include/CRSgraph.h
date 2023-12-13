@@ -59,4 +59,10 @@ void CRSGraph_colsum_inplace(CRSGraph graph, long* colsum);
 */
 long* CRSGraph_stochastic_diagonal(CRSGraph graph);
 
+/**
+ * Computes the start indices of each row in the colindex array
+ * Return: index list
+*/
+long* CRSGraph_indexlist(CRSGraph graph);
+
 #endif /* CRSGRAPH_H */
