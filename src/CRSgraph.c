@@ -146,3 +146,38 @@ long* CRSGraph_indexlist(CRSGraph graph) {
 
     return indices;
 }
+
+/**
+ * Generates an mapping from each column index to an array with the unique column indices
+ * NOTE: this structure is not invariant under sorting
+ * Returns: index map struct
+*/
+IndexMap CRSGraph_indexmap(CRSGraph graph) {
+    IndexMap IM;
+
+    IM.unique_size = 0;
+    IM.map_colindex = (long*) malloc(graph.nr_entries * sizeof(long));
+    IM.unique_indices = (long*) malloc(graph.nr_entries * sizeof(long));
+
+    
+    for (long i=0; i<graph.nr_entries; i++) {
+        int is_new = 1;
+        for (long j=0; j<IM.unique_size; j++) {
+            if (IM.unique_indices[j] == graph.colindex[i]) {
+                is_new = 0;
+                IM.map_colindex[i] = j;
+                break;
+            }
+        }
+        if (is_new == 0) {
+            //printf("Repeating entry %ld, mapped to %ld\n", graph.colindex[i], IM.map_colindex[i]);
+            continue;
+        }
+        IM.unique_indices[IM.unique_size] = graph.colindex[i];
+        IM.map_colindex[i] = IM.unique_size;
+        IM.unique_size ++;
+        //printf("New entry %ld, mapped to %ld\n", graph.colindex[i], IM.map_colindex[i]);
+    }
+
+    return IM;
+}

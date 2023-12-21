@@ -27,6 +27,21 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     double time_D_comm;
     double time_pGDx_comm;
 
+    // create the index-map if needed
+    IndexMap IM;
+    switch(pGx_comm_choice) {
+        case 1:
+            CRSGraph_sort(graph);
+            break;
+        
+        case 3:
+            IM = CRSGraph_indexmap(graph);
+            break;
+
+        default:
+            break;
+    }
+
     // setup communication vectors (whether these are used depends on the parameters)
     double* p_vec_par = (double*) malloc(PI.P * sizeof(double)); // vector for BSP use with P entries
     double* r_vec_par = (double*) malloc(PI.b_local * sizeof(double)); // vector for BSP use with b_local entries
@@ -80,6 +95,10 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
             u_vec[i] /= global_1norm;
         }
     }
+    else if (u_choice < 0) {
+        // 1/N * \vec{1} vector
+        u_vec = generate_vector_filled(1.0 / graph.N, PI.b_local);
+    }
     else {
         // vector e_{u_choice}
         u_vec = (double*) calloc(PI.b_local, sizeof(double));
@@ -118,7 +137,7 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     }
     
     // compute r = p G_s (D^{-1} u) [global operation]
-    parallel_pGx(graph, p, r_vec_par, r_vec_par, PI, pGx_comm_choice);
+    parallel_pGx(graph, p, r_vec_par, r_vec_par, PI, pGx_comm_choice, IM);
 
     time_pGDx_comm = bsp_time() - time_pGDx_comm;
 
@@ -152,7 +171,7 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
         }
 
         // compute r = p G_s . (D^{-1} r)
-        parallel_pGx(graph, p, r_vec_par, r_vec_par, PI, pGx_comm_choice);
+        parallel_pGx(graph, p, r_vec_par, r_vec_par, PI, pGx_comm_choice, IM);
         
         residual_norm = parallel_norm(r_vec_par, p_vec_par, PI);
         iters ++;
@@ -170,6 +189,11 @@ double* pagerank_par(CRSGraph graph, double p, double eps, PARInfo PI, int pre_i
     free(D_vec_par);
     free(D_diag);
     free(D_diag_inv);
+
+    if (pGx_comm_choice == 3) {
+        free(IM.map_colindex);
+        free(IM.unique_indices);
+    }
 
     time_PR_total = bsp_time() - time_PR_total;
 

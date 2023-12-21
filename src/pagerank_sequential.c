@@ -35,6 +35,9 @@ double* pagerank_seq(CRSGraph graph, double p, double eps, int pre_invert_D, int
     if (u_choice == 0) {
         u_vec = generate_stochastic(graph.N);
     }
+    else if (u_choice < 0) {
+        u_vec = generate_vector_filled(1.0 / graph.N, graph.N);
+    }
     else {
         u_vec = generate_ei(u_choice-1, graph.N);
     }

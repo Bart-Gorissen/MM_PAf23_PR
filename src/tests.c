@@ -57,7 +57,7 @@ int random_test(long N, long max_iters, int V) {
 }
 
 /**
- * Tests graph construction, sorting, column sum, and stochastic diagonal
+ * Tests graph construction, sorting, column sum, stochastic diagonal, index map
  * Return: 1
 */
 int graph_seq_test(long N, long L, double p, int V) {
@@ -65,6 +65,7 @@ int graph_seq_test(long N, long L, double p, int V) {
     init_randomness(0);
 
     CRSGraph graph = CRSGraph_generate(N, N, L);
+    IndexMap IM = CRSGraph_indexmap(graph);
     long* colsum_pre = CRSGraph_colsum(graph);
     long* diagonal_pre = CRSGraph_stochastic_diagonal(graph);
 
@@ -82,6 +83,23 @@ int graph_seq_test(long N, long L, double p, int V) {
             printf("%ld ", diagonal_pre[i]);
         }
         printf("] Stochastic Diagonal\n");
+    }
+    if (V > 2) {
+        printf("%ld unique columns : [ ", IM.unique_size);
+        for (long i=0; i<IM.unique_size; i++) {
+            printf("%ld ", IM.unique_indices[i]);
+        }
+        printf("]\n");
+        printf("Colindex [ ");
+        for (long i=0; i<graph.nr_entries; i++) {
+            printf("%ld ", graph.colindex[i]);
+        }
+        printf("]\n");
+        printf("Mapping  [ ");
+        for (long i=0; i<graph.nr_entries; i++) {
+            printf("%ld ", IM.map_colindex[i]);
+        }
+        printf("]\n");
     }
     
     CRSGraph_sort(graph);
@@ -456,27 +474,41 @@ int pagerank_par_test4(long N, long L, double p, double eps, int V) {
 
     double* u_sln;
     u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 0, V);
-    // if (PI.s == 2) {
-    //     printf("bigpull=[");
-    //     for (long i=0; i<PI.b_local; i++) {
-    //         printf("%lf ", u_sln[i]);
-    //     }
-    //     printf("]\n");
-    // }
+    if (PI.s == 0) {
+        printf("bigpull=[");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%lf ", u_sln[i]);
+        }
+        printf("]\n");
+    }
     free(u_sln);
-    // u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 1, V);
-    // free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 1, V);
+    if (PI.s == 0) {
+        printf("prounds=[");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%lf ", u_sln[i]);
+        }
+        printf("]\n");
+    }
+    free(u_sln);
     u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 2, V);
-    // if (PI.s == 2) {
-    //     printf("gget=[");
-    //     for (long i=0; i<PI.b_local; i++) {
-    //         printf("%lf ", u_sln[i]);
-    //     }
-    //     printf("]\n");
-    // }
+    if (PI.s == 0) {
+        printf("gget=[");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%lf ", u_sln[i]);
+        }
+        printf("]\n");
+    }
     free(u_sln);
-    // u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 3, V);
-    // free(u_sln);
+    u_sln = pagerank_par(graph, p, eps, PI, 0, 0, 2, 3, V);
+    if (PI.s == 0) {
+        printf("mapget=[");
+        for (long i=0; i<PI.b_local; i++) {
+            printf("%lf ", u_sln[i]);
+        }
+        printf("]\n");
+    }
+    free(u_sln);
 
     free(graph.rowsize);
     free(graph.colindex);

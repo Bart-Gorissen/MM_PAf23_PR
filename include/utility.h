@@ -85,6 +85,12 @@ double norm(double* u_vec, long N);
 double* inverse(long* D, long N);
 
 /**
+ * Generates vector of length N with all entries a
+ * Return: a\vec{1}
+*/
+double* generate_vector_filled(double a, long N);
+
+/**
  * Generates (stochastic) e_i vector
  * Return: e_i
 */

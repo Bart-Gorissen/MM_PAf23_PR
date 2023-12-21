@@ -17,6 +17,12 @@ typedef struct {
     long nr_entries; // total number of inlinks added
 } CRSGraph;
 
+typedef struct{
+    long unique_size;       // number of unique column indices
+    long* unique_indices;   // stores indices of all unique indices
+    long* map_colindex;     // maps [0, N) to [0, unique_size)
+} IndexMap;
+
 /**
  * Generates random graph on N nodes in CRS format
  * First determining how many entries per row: in range [1,L]
@@ -64,5 +70,12 @@ long* CRSGraph_stochastic_diagonal(CRSGraph graph);
  * Return: index list
 */
 long* CRSGraph_indexlist(CRSGraph graph);
+
+/**
+ * Generates an mapping from each column index to an array with the unique column indices
+ * NOTE: this structure is not invariant under sorting
+ * Returns: index map struct
+*/
+IndexMap CRSGraph_indexmap(CRSGraph graph);
 
 #endif /* CRSGRAPH_H */

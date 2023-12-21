@@ -1,6 +1,5 @@
 #include <math.h>
 #include <bsp.h>
-#include <unistd.h>
 
 #include "utility_parallel.h"
 #include "CRSgraph.h"
@@ -406,15 +405,14 @@ long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI) {
  * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: void
 */
-void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice) {
+void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice, IndexMap IM) {
     switch (pGx_comm_choice) {
         case 0:
             parallel_pGx_bigpull(graph, p, x_par, y_vec, PI);
             break;
         
         case 1:
-            // TODO (placeholder)
-            parallel_pGx_bigpull(graph, p, x_par, y_vec, PI);
+            parallel_pGx_pround(graph, p, x_par, y_vec, PI);
             break;
         
         case 2:
@@ -422,8 +420,7 @@ void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInf
             break;
 
         case 3:
-            // TODO (placeholder)
-            parallel_pGx_gget(graph, p, x_par, y_vec, PI);
+            parallel_pGx_mapget(graph, p, x_par, y_vec, PI, IM);
             break;
         
         default:
@@ -468,6 +465,87 @@ void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec
 }
 
 /**
+ * P-Round version of y = p G_s . x
+ * NOTE: assumes graph is already sorted
+ * Return: void
+*/
+long* parallel_pGx_pround(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI) {
+    long* counter = (long*) malloc(PI.b_local * sizeof(long));
+    double* local_intermedaite = (double*) calloc(PI.b_local, sizeof(double));
+    double* global_fetch = (double*) malloc(graph.L * PI.b_local * sizeof(double));
+    long* start_indices = CRSGraph_indexlist(graph);
+    long* curr_indices = (long*) malloc(PI.b_local * sizeof(long));
+
+    for (long i=0; i<graph.L * PI.b_local; i++) {
+        global_fetch[i] = -234.8;
+    }
+
+    // copy starting indices and forward to start current processor
+    for (long i=0; i<PI.b_local; i++) {
+        curr_indices[i] = start_indices[i];
+
+        // forward
+        while(graph.colindex[curr_indices[i]] / PI.b < PI.s && curr_indices[i] < start_indices[i+1]) {
+            curr_indices[i] ++;
+        }
+    }
+
+    for (bsp_pid_t t=0; t<=PI.p_last; t++) {
+        bsp_pid_t target = (PI.s + t) % (PI.p_last + 1);
+
+        // wrap around when applicable (not needed for processor 0)
+        if (target == 0 && PI.s != 0) {
+            for (long i=0; i<PI.b_local; i++) {
+                curr_indices[i] = start_indices[i];
+            }
+        }
+
+        long start = 0;
+
+        for (long i=0; i<PI.b_local; i++) {
+            // while the next column index is on the target processor, retrieve it from their into global_fetch
+            counter[i] = 0;
+            
+            while (graph.colindex[curr_indices[i]] / PI.b <= target && curr_indices[i] < start_indices[i+1]) {
+                bsp_get(target,
+                        x_par,
+                        (graph.colindex[curr_indices[i]] % PI.b) * sizeof(double),
+                        &global_fetch[start + counter[i]],
+                        sizeof(double)
+                );
+                counter[i] ++;
+                curr_indices[i] ++;
+            }
+
+            start += graph.L;
+        }
+
+        bsp_sync();
+
+        start = 0;
+
+        // increment the sum and set the (running) columns sum to 0
+        for (long i=0; i<PI.b_local; i++) {
+            for (long j=0; j<counter[i]; j++) {
+                local_intermedaite[i] += global_fetch[start + j];
+            }
+
+            start += graph.L;
+        }
+    }
+
+    for (long i=0; i<PI.b_local; i++) {
+        y_vec[i] = local_intermedaite[i] * p;
+    }
+
+    free(counter);
+    free(local_intermedaite);
+    free(global_fetch);
+    free(start_indices);
+    free(curr_indices);
+}
+
+/**
  * G_get version of y = p G_s . x
  * Return: void
 */
@@ -506,6 +584,48 @@ void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, P
         y_vec[i] = 0;
         for (long j=0; j<graph.rowsize[i]; j++) {
             y_vec[i] += global_fetch[start + j];
+        }
+
+        y_vec[i] *= p;
+        start += graph.rowsize[i];
+    }
+
+    free(global_fetch);
+}
+
+/**
+ * Mapped Get version of y = p G_s . x
+ * Return: void
+*/
+void parallel_pGx_mapget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, IndexMap IM) {
+    double* global_fetch = (double*) malloc(IM.unique_size * sizeof(double));
+
+    // get all the x_j entries for j a non-zero column in G_s
+    for (long i=0; i<IM.unique_size; i++) {
+        long k = IM.unique_indices[i]; // global column number
+        long t = k / PI.b;             // its processor
+        long k_local = k % PI.b;       // its local entry (in vector x)
+
+        //printf("Getting %ld from proc %ld at local index %ld\n", k, t, k_local);
+
+        bsp_get(t,
+                x_par,
+                k_local * sizeof(double),
+                &global_fetch[i],
+                sizeof(double)
+        );
+    }
+
+    bsp_sync();
+
+    long start = 0;
+
+    // compute matrix-vector product
+    for (long i=0; i<PI.b_local; i++) {
+        y_vec[i] = 0;
+        for (long j=0; j<graph.rowsize[i]; j++) {
+            //if (PI.s == 0) printf("Retrieving column %ld from %ld\n", start+j, IM.map_colindex[start+j]);
+            y_vec[i] += global_fetch[IM.map_colindex[start + j]];
         }
 
         y_vec[i] *= p;

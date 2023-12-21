@@ -383,6 +383,18 @@ double* inverse(long* D, long N) {
 }
 
 /**
+ * Generates vector of length N with all entries a
+ * Return: a\vec{1}
+*/
+double* generate_vector_filled(double a, long N) {
+    double* result = malloc(N * sizeof(double));
+    for (long i=0; i<N; i++) {
+        result[i] = a;
+    }
+    return result;
+}
+
+/**
  * Generates (stochastic) e_i vector
  * Return: e_i
 */

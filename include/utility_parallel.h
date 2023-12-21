@@ -101,7 +101,7 @@ long* parallel_colsum_aggrsend(CRSGraph graph, PARInfo PI);
  * pGx_comm_choice {0,1,2,3}: (0 : full-broadcast of u), (1 : P-round broadcast), (2 : quick-get), (3 : mapped-get)
  * Return: void
 */
-void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice);
+void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, int pGx_comm_choice, IndexMap IM);
 
 /**
  * Big-pull version of y = p G_s . x
@@ -110,9 +110,22 @@ void parallel_pGx(CRSGraph graph, double p, double* x_par, double* y_vec, PARInf
 void parallel_pGx_bigpull(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
 
 /**
+ * P-Round version of y = p G_s . x
+ * NOTE: assumes graph is already sorted
+ * Return: void
+*/
+long* parallel_pGx_pround(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
+
+/**
  * G_get version of y = p G_s . x
  * Return: void
 */
 void parallel_pGx_gget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI);
+
+/**
+ * Mapped Get version of y = p G_s . x
+ * Return: void
+*/
+void parallel_pGx_mapget(CRSGraph graph, double p, double* x_par, double* y_vec, PARInfo PI, IndexMap IM);
 
 #endif /* UTILITY_PARALLEL_H */
