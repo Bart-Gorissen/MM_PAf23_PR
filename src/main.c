@@ -37,7 +37,7 @@ void par_outer() {
     CRSGraph graph = CRSGraph_generate(PRMS.N, PI.b_local, PRMS.L);
 
     double* u_sln;
-    u_sln = pagerank_par(graph, PRMS.p, PRMS.eps, PI, 0, 0, 0, 0, PRMS.V);
+    u_sln = pagerank_par(graph, PRMS.p, PRMS.eps, PI, 0, 0, 2, 2, PRMS.V);
     free(u_sln);
     free(graph.rowsize);
     free(graph.colindex);
